@@ -22,6 +22,7 @@ from friend_circle_lite.outputs.legacy_api import (
     merge_errors_from_json_url,
     merge_link_data_from_json_url,
 )
+from friend_circle_lite.crawler.service import sort_articles_by_time
 from friend_circle_lite.storage.diagnostics import SQLiteDebugDumper
 from friend_circle_lite.utils.json import write_json
 
@@ -70,8 +71,7 @@ class FriendCircleLiteApplication:
             proxy_settings=self.config.proxy_settings,
         )
         if crawl_result is None:
-            logging.error("[爬虫入口] 抓取流程失败，未生成任何输出文件")
-            return
+            raise RuntimeError("[爬虫入口] 抓取流程失败，拒绝发布")
 
         result, lost_friends, link_payload = crawl_result
         result, lost_friends, link_payload = self._merge_remote_results_if_enabled(result, lost_friends, link_payload)
@@ -79,10 +79,9 @@ class FriendCircleLiteApplication:
         article_count = len(result.get("article_data", []))
         logging.info(f"[爬虫入口] 数据获取完毕，共有 {article_count} 篇文章，正在处理输出文件")
 
-        result = deal_with_large_data(
-            result,
-            future_tolerance_days=self.config.future_article_tolerance_days,
-        )
+        process_articles = sort_articles_by_time if spider_settings.keep_all_articles else deal_with_large_data
+        result = process_articles(result, future_tolerance_days=self.config.future_article_tolerance_days)
+        result["statistical_data"]["article_num"] = len(result.get("article_data", []))
         write_json(self.config.runtime_paths.all_json_file, result)
         write_json(self.config.runtime_paths.errors_json_file, lost_friends)
         write_json(self.config.runtime_paths.link_json_file, link_payload)
