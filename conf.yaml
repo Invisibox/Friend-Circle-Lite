@@ -6,12 +6,14 @@ debug: false
 # 爬虫相关配置
 # 说明：从友链 JSON 中读取站点列表，抓取各站点 RSS 文章，并生成 all.json。
 #   enable:        是否启用爬虫
-#   json_url:      友链 JSON 地址，仅支持网络地址
+#   json_url:      友链 JSON 地址，支持 HTTP(S) URL 或本地 JSON 文件路径
 #   article_count: 每个站点最多抓取的文章数量
 spider_settings:
   enable: true
-  json_url: "https://blog.liushen.fun/friend.json"
-  article_count: 5
+  json_url: "./temp/ghost-friends.json"
+  article_count: 10
+  # 保留各站抓取到的全部文章，避免全局 150 篇裁剪排除不活跃站点。
+  keep_all_articles: true
 
 # 代理配置
 # 说明：用于友链检测和 RSS 抓取。程序会先直连，请求失败且配置了代理时自动走代理。
@@ -50,8 +52,8 @@ link_check:
   timeout: 15
   max_workers: 10
   status_api_url: "https://v2.xxapi.cn/api/status?url={url}"
-  enable_backlink_check: true
-  author_url: "blog.liushen.fun"
+  enable_backlink_check: false
+  author_url: ""
 
 # 邮件推送功能配置，暂未实现，等待后续开发
 # 说明：每次运行后向指定邮箱推送所有友链文章更新。
@@ -64,7 +66,7 @@ email_push:
 # 邮件 issue 订阅功能配置
 # 说明：从 GitHub issue 中提取订阅邮箱，并推送你自己站点的新文章。
 rss_subscribe:
-  enable: true
+  enable: false
   github_username: willow-god
   github_repo: Friend-Circle-Lite
   your_blog_url: https://blog.liushen.fun/
@@ -82,8 +84,5 @@ smtp:
 
 # 特殊 RSS 地址指定
 # 说明：用于指定特殊 RSS 地址，比如 B 站专栏等不常见 RSS 地址后缀。可以置空，但不要删除此项。
-specific_RSS:
-  - name: "阮一峰"
-    url: "http://feeds.feedburner.com/ruanyifeng"
-  # - name: "无名小栈"
-  #   url: "https://blog.imsyy.top/rss.xml"
+specific_RSS: []
+# 如自动探测失败，在此按 Ghost 卡片名称配置 name / url；改名时同步修改覆盖项。

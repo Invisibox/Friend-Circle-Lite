@@ -1,3 +1,5 @@
+> 本 fork 使用 Ghost 友链页自动维护名单，部署、失败保护及回退方式见 [Ghost 同步说明](docs/ghost-sync.md)。
+
 <div align="center">
   <img src="./static/favicon.ico" width="200" alt="fclite">
 

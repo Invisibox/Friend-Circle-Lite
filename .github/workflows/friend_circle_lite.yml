@@ -5,6 +5,10 @@ on:
     - cron: "22 */4 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: friend-circle-publication
+  cancel-in-progress: false
+
 env:
   TZ: Asia/Shanghai
   PAGE_BRANCH: page
@@ -12,6 +16,8 @@ env:
 
 jobs:
   friend-circle-lite:
+    if: github.event_name == 'workflow_dispatch' || vars.GHOST_FRIENDS_URL != ''
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -53,6 +59,14 @@ jobs:
         path: './temp'
         if_no_artifact_found: warn
 
+    - name: Test Ghost synchronization
+      run: python -m unittest tests.test_ghost_directory
+
+    - name: Import Ghost friend directory
+      env:
+        GHOST_FRIENDS_URL: ${{ vars.GHOST_FRIENDS_URL }}
+      run: python -m friend_circle_lite.ghost_directory
+
     - name: Check RSS feeds
       env:
         SMTP_PWD: ${{ secrets.SMTP_PWD }}
@@ -62,7 +76,7 @@ jobs:
       run: |
         echo "Checking RSS feeds..."
         python run.py
-        ls ./temp
+        python -m friend_circle_lite.ghost_directory --validate-feed all.json
     
     - name: Upload temp file as artifact
       uses: actions/upload-artifact@v4
@@ -79,7 +93,7 @@ jobs:
     - name: Build static publish directory
       run: |
         mkdir pages
-        cp -r main ./static/edgeone.json ./static/_headers ./static/index.html ./static/readme.md ./static/favicon.ico ./static/bg-light.webp ./static/bg-dark.webp all.json link.json errors.json pages/
+        cp -r main ./static/edgeone.json ./static/_headers ./static/index.html ./static/readme.md ./static/favicon.ico ./static/bg-light.webp ./static/bg-dark.webp all.json link.json errors.json vercel.json pages/
 
     - name: Publish static assets to branches
       run: |
@@ -89,6 +103,10 @@ jobs:
         fi
         cd pages
         git init
+        if [ -n "$published_tree" ]; then
+          git fetch .. "refs/remotes/origin/${PAGE_BRANCH}"
+          git reset --soft FETCH_HEAD
+        fi
         git add .
         generated_tree=$(git write-tree)
         if [ -n "$published_tree" ] && [ "$generated_tree" = "$published_tree" ]; then
@@ -96,7 +114,7 @@ jobs:
           exit 0
         fi
         git commit -m "⏱️ $(date +"%Y年%m月%d日-%H时%M分") GitHub Actions定时更新"
-        git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ env.PAGE_BRANCH }}
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ env.PAGE_BRANCH }}
 
     - name: Delete Workflow Runs
       uses: Mattraks/delete-workflow-runs@v2

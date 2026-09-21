@@ -8,6 +8,9 @@ formatting.
 from __future__ import annotations
 
 import logging
+import json
+from pathlib import Path
+from urllib.parse import urlsplit
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -284,9 +287,14 @@ class FriendCircleCrawlService:
 
     def _load_websites(self, session: requests.Session) -> list[Website] | None:
         try:
-            response = session.get(self.json_url, headers=HEADERS_JSON, timeout=timeout)
-            response.raise_for_status()
-            friends_data = response.json()
+            if urlsplit(self.json_url).scheme in ("http", "https"):
+                response = session.get(self.json_url, headers=HEADERS_JSON, timeout=timeout)
+                response.raise_for_status()
+                friends_data = response.json()
+            else:
+                friends_data = json.loads(Path(self.json_url).read_text(encoding="utf-8"))
+            if not isinstance(friends_data, dict) or not isinstance(friends_data.get("friends"), list):
+                raise ValueError("Invalid friend list: expected a friends array")
         except Exception as exc:
             logging.error(f"无法获取链接：{self.json_url} ：{exc}", exc_info=True)
             return None

@@ -63,6 +63,7 @@ class SpiderSettings:
     enable: bool = True
     json_url: str = ""
     article_count: int = 5
+    keep_all_articles: bool = False
 
 
 @dataclass(slots=True)
@@ -164,6 +165,7 @@ class ApplicationConfig:
                 enable=bool(spider_raw.get("enable", True)),
                 json_url=str(spider_raw.get("json_url", "")).strip(),
                 article_count=int(spider_raw.get("article_count", 5)),
+                keep_all_articles=_as_bool(spider_raw.get("keep_all_articles"), False),
             ),
             proxy_settings=ProxySettings(
                 proxy_url=os.getenv("PROXY_URL") or str(proxy_raw.get("proxy_url", "")).strip(),
